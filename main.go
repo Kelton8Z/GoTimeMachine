@@ -6,6 +6,7 @@ import (
 	"runtime"
 	"strings"
 
+	"github.com/kbinani/screenshot"
 	"github.com/progrium/macdriver/cocoa"
 	"github.com/progrium/macdriver/core"
 	"github.com/progrium/macdriver/objc"
@@ -28,15 +29,13 @@ func main() {
 				t.LayoutManager().EnsureLayoutForTextContainer(t.TextContainer())
 				rect = t.LayoutManager().UsedRectForTextContainer(t.TextContainer())
 				size = s
-				if rect.Size.Width >= screen.Width*0.8 {
+				if rect.Size.Width >= screen.Width {
 					break
 				}
 			}
 			return rect, size
 		}()
 
-		height := tr.Size.Height * 1.5
-		tr.Origin.Y = (height / 2) - (tr.Size.Height / 2)
 		t := cocoa.NSTextView_Init(tr)
 		t.SetString(text)
 		t.SetFont(cocoa.Font(*fontName, fontSize))
@@ -50,12 +49,13 @@ func main() {
 		c.Layer().SetCornerRadius(32.0)
 		c.AddSubviewPositionedRelativeTo(t, cocoa.NSWindowAbove, nil)
 
-		tr.Size.Height = height
+		tr.Size.Height = screen.Height
+		tr.Size.Width = screen.Width
 		tr.Origin.X = (screen.Width / 2) - (tr.Size.Width / 2)
 		tr.Origin.Y = (screen.Height / 2) - (tr.Size.Height / 2)
 
 		w := cocoa.NSWindow_Init(core.Rect(0, 0, 0, 0),
-			cocoa.NSBorderlessWindowMask, cocoa.NSBackingStoreBuffered, false)
+			cocoa.NSWindowStyleMaskFullScreen, cocoa.NSBackingStoreBuffered, false)
 		w.SetContentView(c)
 		w.SetTitlebarAppearsTransparent(true)
 		w.SetTitleVisibility(cocoa.NSWindowTitleHidden)
@@ -63,15 +63,37 @@ func main() {
 		w.SetBackgroundColor(cocoa.NSColor_Clear())
 		w.SetLevel(cocoa.NSMainMenuWindowLevel + 2)
 		w.SetFrameDisplay(tr, true)
-		w.MakeKeyAndOrderFront(nil)
+		cls := objc.NewClass("AppDelegate", "NSWindow")
+		cls.AddMethod("applicationDidFinishLaunching:", func(app objc.Object) {
+			w.ToggleFullScreen(nil)
+			fmt.Println("Launched!")
+		})
 
-		events := make(chan cocoa.NSEvent, 64)
-		go func() {
-			<-events
-			cocoa.NSApp().Terminate()
-		}()
-		cocoa.NSEvent_GlobalMonitorMatchingMask(cocoa.NSEventMaskAny, events)
+		w.MakeKeyAndOrderFront(nil)
+		objc.RegisterClass(cls)
+		fmt.Println(screenshot.NumActiveDisplays())
+
+		delegate := objc.Get("AppDelegate").Alloc().Init()
+		app := objc.Get("NSApplication").Get("sharedApplication")
+		app.Set("delegate:", delegate)
+		app.Send("run")
+
+		// events := make(chan cocoa.NSEvent, 64)
+		// go func() {
+		// 	<-events
+		// 	cocoa.NSApp().Terminate()
+		// }()
+		// cocoa.NSEvent_GlobalMonitorMatchingMask(cocoa.NSEventMaskAny, events)
 	})
+
+	// go full screen
+	// cls := objc.NewClass("AppDelegate", "NSObject")
+
+	// objc.RegisterClass(cls)
+
+	// delegate := objc.Get("AppDelegate").Alloc().Init()
+	// app.Set("delegate:", delegate)
+	// app.NSApplicationPresentationFullScreen
 	app.ActivateIgnoringOtherApps(true)
 	app.Run()
 }
