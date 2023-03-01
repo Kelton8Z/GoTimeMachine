@@ -6,12 +6,18 @@ import (
 	"os/exec"
 	"runtime"
 	"strings"
+	"time"
 
 	// . "github.com/go-git/go-git/v5/_examples"
+	"github.com/go-errors/errors"
 	"github.com/progrium/macdriver/cocoa"
 	"github.com/progrium/macdriver/core"
 	"github.com/progrium/macdriver/objc"
 )
+
+func Crash() error {
+	return errors.Errorf("this function is supposed to crash")
+}
 
 func main() {
 	runtime.LockOSThread()
@@ -86,64 +92,25 @@ func main() {
 		// cocoa.NSEvent_GlobalMonitorMatchingMask(cocoa.NSEventMaskAny, events)
 	})
 
-	// cmd := exec.Command("bash", "./rewindMe/push.sh")
+	stop_cmd := exec.Command("Ctrl-C")
 	cd_cmd := exec.Command("cd", "rewindMe")
 	add_cmd := exec.Command("git", "add", ".")
 	msg := "msg"
 	commit_cmd := exec.Command("git", "commit", " -m", msg)
 	push_cmd := exec.Command("git", "push")
 
-	// init git-go
-	// path := "/Users/keltonz/Code/GoTimeMachine/rewindMe"
-	// repo := "http://localhost:3000/keltonzhang/rewindMe.git"
-	// CheckArgs(repo)
-	// CheckArgs("<github_username>", "<github_password>")
-	// username, password := os.Args[1], os.Args[2]
-
-	// r, git_go_err := git.PlainOpen(path)
-	// CheckIfError(git_go_err)
-
-	// workTree, err := r.Worktree()
-	// CheckIfError(err)
-
-	// // check if there's change
-	// Info("git status --porcelain")
-	// status, err := workTree.Status()
-	// CheckIfError(err)
-	// fmt.Println(status)
-
-	// // if changed, add
-	// if _, err = workTree.Add("."); err != nil {
-	// }
-
-	// // push
-
-	// Info("git push")
-	// // push with authentication
-	// git_go_err = r.Push(&git.PushOptions{RemoteName: "origin", Auth: &http.BasicAuth{
-	// 	Username: username,
-	// 	Password: password,
-	// },
-	// 	Progress: os.Stdout})
-	// CheckIfError(git_go_err)
-
-	// cmd := exec.Command("git xet", "clone", repo)
 	cd_cmd.Run()
+
+	output_file := time.Now().String() + ".mkv"
+	capture_cmd := exec.Command("ffmpeg", "-f", "avfoundation", "-pix_fmt", "yuyv422", "-i", "1:0", "-r", "0.5", output_file)
+	// output, _ := capture_cmd.CombinedOutput()
+	// fmt.Println(string(output))
+	capture_cmd.Run()
+	stop_cmd.Run()
 	add_cmd.Run()
 	commit_cmd.Run()
 	push_cmd.Run()
-	// if err != nil {
-	// 	log.Fatal(err)
-	// }
 
-	// go full screen
-	// cls := objc.NewClass("AppDelegate", "NSObject")
-
-	// objc.RegisterClass(cls)
-
-	// delegate := objc.Get("AppDelegate").Alloc().Init()
-	// app.Set("delegate:", delegate)
-	// app.NSApplicationPresentationFullScreen
 	app.ActivateIgnoringOtherApps(true)
 	app.Run()
 }
