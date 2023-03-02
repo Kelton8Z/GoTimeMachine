@@ -151,7 +151,7 @@ func main() {
 	ctx, cancel := context.WithTimeout(context.Background(), 80*time.Second)
 	defer cancel()
 
-	output_file := time.Now().String() + ".mkv"
+	output_file := "rewindMe" + time.Now().String() + ".mkv"
 	capture_cmd := exec.CommandContext(ctx, "ffmpeg", "-f", "avfoundation", "-pix_fmt", "yuyv422", "-i", "1:0", "-r", "0.5", output_file)
 	output, _ := capture_cmd.CombinedOutput()
 	fmt.Println(string(output))
