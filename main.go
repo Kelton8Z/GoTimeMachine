@@ -16,6 +16,16 @@ import (
 	"github.com/progrium/macdriver/objc"
 )
 
+type Mode int64
+
+var mode Mode
+
+const (
+	TRACK Mode = 0
+	PAUSE Mode = 1
+	TRACE Mode = 2
+)
+
 func Crash() error {
 	return errors.Errorf("this function is supposed to crash")
 }
@@ -26,6 +36,40 @@ func main() {
 	app := cocoa.NSApp_WithDidLaunch(func(n objc.Object) {
 		fontName := flag.String("font", "Helvetica", "font to use")
 		flag.Parse()
+
+		obj := cocoa.NSStatusBar_System().StatusItemWithLength(cocoa.NSVariableStatusItemLength)
+		obj.Retain()
+		obj.Button().SetTitle("▶️")
+
+		itemTrack := cocoa.NSMenuItem_New()
+		itemTrack.SetTitle("Track")
+		itemTrack.SetAction(objc.Sel("track:"))
+		cocoa.DefaultDelegateClass.AddMethod("track:", func(_ objc.Object) {
+			mode = TRACK
+			fmt.Println("track!")
+		})
+
+		itemPause := cocoa.NSMenuItem_New()
+		itemPause.SetTitle("Pause")
+		itemPause.SetAction(objc.Sel("pause:"))
+		cocoa.DefaultDelegateClass.AddMethod("trace:", func(_ objc.Object) {
+			mode = PAUSE
+			fmt.Println("pause!")
+		})
+
+		itemTrace := cocoa.NSMenuItem_New()
+		itemTrace.SetTitle("Trace")
+		itemTrace.SetAction(objc.Sel("trace:"))
+		cocoa.DefaultDelegateClass.AddMethod("trace:", func(_ objc.Object) {
+			mode = TRACE
+			fmt.Println("trace!")
+		})
+
+		menu := cocoa.NSMenu_New()
+		menu.AddItem(itemTrack)
+		menu.AddItem(itemPause)
+		menu.AddItem(itemTrace)
+		obj.SetMenu(menu)
 
 		screen := cocoa.NSScreen_Main().Frame().Size
 		text := fmt.Sprintf(" %s ", strings.Join(flag.Args(), " "))
@@ -93,6 +137,9 @@ func main() {
 		// cocoa.NSEvent_GlobalMonitorMatchingMask(cocoa.NSEventMaskAny, events)
 	})
 
+	app.ActivateIgnoringOtherApps(true)
+	app.Run()
+
 	cd_cmd := exec.Command("cd", "rewindMe")
 	add_cmd := exec.Command("git", "add", ".")
 	msg := "msg"
@@ -101,7 +148,7 @@ func main() {
 
 	cd_cmd.Run()
 
-	ctx, cancel := context.WithTimeout(context.Background(), 8*time.Second)
+	ctx, cancel := context.WithTimeout(context.Background(), 80*time.Second)
 	defer cancel()
 
 	output_file := time.Now().String() + ".mkv"
@@ -120,8 +167,5 @@ func main() {
 	add_cmd.Run()
 	commit_cmd.Run()
 	push_cmd.Run()
-
-	app.ActivateIgnoringOtherApps(true)
-	app.Run()
 
 }
