@@ -1,6 +1,7 @@
 package main
 
 import (
+	"context"
 	"flag"
 	"fmt"
 	"os/exec"
@@ -92,7 +93,6 @@ func main() {
 		// cocoa.NSEvent_GlobalMonitorMatchingMask(cocoa.NSEventMaskAny, events)
 	})
 
-	stop_cmd := exec.Command("Ctrl-C")
 	cd_cmd := exec.Command("cd", "rewindMe")
 	add_cmd := exec.Command("git", "add", ".")
 	msg := "msg"
@@ -101,16 +101,27 @@ func main() {
 
 	cd_cmd.Run()
 
+	ctx, cancel := context.WithTimeout(context.Background(), 8*time.Second)
+	defer cancel()
+
 	output_file := time.Now().String() + ".mkv"
-	capture_cmd := exec.Command("ffmpeg", "-f", "avfoundation", "-pix_fmt", "yuyv422", "-i", "1:0", "-r", "0.5", output_file)
-	// output, _ := capture_cmd.CombinedOutput()
-	// fmt.Println(string(output))
-	capture_cmd.Run()
-	stop_cmd.Run()
+	capture_cmd := exec.CommandContext(ctx, "ffmpeg", "-f", "avfoundation", "-pix_fmt", "yuyv422", "-i", "1:0", "-r", "0.5", output_file)
+	output, _ := capture_cmd.CombinedOutput()
+	fmt.Println(string(output))
+	for {
+		capture_cmd.Run()
+		if ctx.Err() == context.DeadlineExceeded {
+			fmt.Println("Paused")
+			break
+		}
+	}
+	capture_cmd.Process.Kill()
+
 	add_cmd.Run()
 	commit_cmd.Run()
 	push_cmd.Run()
 
 	app.ActivateIgnoringOtherApps(true)
 	app.Run()
+
 }
