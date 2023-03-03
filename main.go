@@ -39,20 +39,12 @@ func main() {
 		obj.Retain()
 		obj.Button().SetTitle("▶️")
 
-		itemTrack := cocoa.NSMenuItem_New()
-		itemTrack.SetTitle("Track")
-		itemTrack.SetAction(objc.Sel("track:"))
+		itemTrackOrPause := cocoa.NSMenuItem_New()
+		itemTrackOrPause.SetTitle("Track")
+		itemTrackOrPause.SetAction(objc.Sel("track:"))
 		cocoa.DefaultDelegateClass.AddMethod("track:", func(_ objc.Object) {
 			mode = TRACK
 			fmt.Println("track!")
-		})
-
-		itemPause := cocoa.NSMenuItem_New()
-		itemPause.SetTitle("Pause")
-		itemPause.SetAction(objc.Sel("pause:"))
-		cocoa.DefaultDelegateClass.AddMethod("pause:", func(_ objc.Object) {
-			mode = PAUSE
-			fmt.Println("pause!")
 		})
 
 		itemTrace := cocoa.NSMenuItem_New()
@@ -63,10 +55,17 @@ func main() {
 			fmt.Println("trace!")
 		})
 
+		itemQuit := cocoa.NSMenuItem_New()
+		itemQuit.SetTitle("Quit")
+		itemQuit.SetAction(objc.Sel("terminate:"))
+		cocoa.DefaultDelegateClass.AddMethod("terminate:", func(_ objc.Object) {
+			fmt.Println("quit!")
+		})
+
 		menu := cocoa.NSMenu_New()
-		menu.AddItem(itemTrack)
-		menu.AddItem(itemPause)
+		menu.AddItem(itemTrackOrPause)
 		menu.AddItem(itemTrace)
+		menu.AddItem(itemQuit)
 		obj.SetMenu(menu)
 
 		/*
