@@ -1,7 +1,6 @@
 package main
 
 import (
-	"context"
 	"flag"
 	"fmt"
 	"os/exec"
@@ -9,7 +8,7 @@ import (
 	"time"
 
 	// . "github.com/go-git/go-git/v5/_examples"
-	"github.com/go-errors/errors"
+
 	"github.com/progrium/macdriver/cocoa"
 	"github.com/progrium/macdriver/core"
 	"github.com/progrium/macdriver/objc"
@@ -25,8 +24,27 @@ const (
 	TRACE Mode = 2
 )
 
-func Crash() error {
-	return errors.Errorf("this function is supposed to crash")
+func track() {
+
+	output_file := "rewindMe/" + time.Now().String() + ".mkv"
+	capture_cmd := exec.Command("ffmpeg", "-f", "avfoundation", "-pix_fmt", "yuyv422", "-i", "1:0", "-r", "0.5", output_file)
+	output, _ := capture_cmd.CombinedOutput()
+	fmt.Println(string(output))
+}
+
+func pause(capture_cmd chan exec.Cmd) {
+	cd_cmd := exec.Command("cd", "rewindMe")
+	add_cmd := exec.Command("git", "add", ".")
+	msg := "msg"
+	commit_cmd := exec.Command("git", "commit", " -m", msg)
+	push_cmd := exec.Command("git", "push")
+
+	cd_cmd.Run()
+	(<-capture_cmd).Process.Kill()
+
+	add_cmd.Run()
+	commit_cmd.Run()
+	push_cmd.Run()
 }
 
 func main() {
@@ -48,6 +66,7 @@ func main() {
 
 		itemTrackOrPause := cocoa.NSMenuItem_New()
 		nextClicked := make(chan bool)
+		capture_cmd := make(chan exec.Cmd)
 		go func() {
 			for {
 				select {
@@ -55,15 +74,18 @@ func main() {
 					if mode == TRACK {
 						core.Dispatch(func() { itemTrackOrPause.SetTitle("Pause") })
 						mode = PAUSE
+						go pause(capture_cmd)
 					} else {
 						core.Dispatch(func() { itemTrackOrPause.SetTitle("Track") })
 						mode = TRACK
+						go track()
 					}
 				}
 			}
 		}()
 
-		nextClicked <- true
+		// nextClicked <- true
+		itemTrackOrPause.SetTitle("Track")
 		itemTrackOrPause.SetAction(objc.Sel("nextClicked:"))
 		cocoa.DefaultDelegateClass.AddMethod("nextClicked:", func(_ objc.Object) {
 			nextClicked <- true
@@ -157,33 +179,5 @@ func main() {
 	app.ActivateIgnoringOtherApps(true)
 
 	app.Run()
-
-	cd_cmd := exec.Command("cd", "rewindMe")
-	add_cmd := exec.Command("git", "add", ".")
-	msg := "msg"
-	commit_cmd := exec.Command("git", "commit", " -m", msg)
-	push_cmd := exec.Command("git", "push")
-
-	cd_cmd.Run()
-
-	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
-	defer cancel()
-
-	output_file := "rewindMe" + time.Now().String() + ".mkv"
-	capture_cmd := exec.CommandContext(ctx, "ffmpeg", "-f", "avfoundation", "-pix_fmt", "yuyv422", "-i", "1:0", "-r", "0.5", output_file)
-	output, _ := capture_cmd.CombinedOutput()
-	fmt.Println(string(output))
-	for {
-		capture_cmd.Run()
-		if ctx.Err() == context.DeadlineExceeded {
-			fmt.Println("Paused")
-			break
-		}
-	}
-	capture_cmd.Process.Kill()
-
-	add_cmd.Run()
-	commit_cmd.Run()
-	push_cmd.Run()
 
 }
