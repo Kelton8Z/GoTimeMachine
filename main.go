@@ -32,17 +32,24 @@ func track() {
 }
 
 func pause(capture_cmd chan exec.Cmd) {
+	// (<-capture_cmd).Process.Kill()
 	cd_cmd := exec.Command("cd", "rewindMe")
+	pwd_cmd := exec.Command("pwd")
+	dir, _ := pwd_cmd.CombinedOutput()
+	fmt.Println(string(dir))
 	add_cmd := exec.Command("git", "add", ".")
+	output, _ := add_cmd.CombinedOutput()
+	fmt.Println(string(output))
 	fmt.Println("Added")
 	msg := "msg"
-	commit_cmd := exec.Command("git", "commit", " -m", msg)
+	commit_cmd := exec.Command("git", "commit", "-m", msg)
 	fmt.Println("committed")
 	push_cmd := exec.Command("git", "push")
+	out, _ := push_cmd.CombinedOutput()
+	fmt.Println(string(out))
 	fmt.Println("pushed")
 
 	cd_cmd.Run()
-	(<-capture_cmd).Process.Kill()
 
 	add_cmd.Run()
 	commit_cmd.Run()
