@@ -11,6 +11,7 @@ import (
 	// . "github.com/go-git/go-git/v5/_examples"
 	"github.com/go-errors/errors"
 	"github.com/progrium/macdriver/cocoa"
+	"github.com/progrium/macdriver/core"
 	"github.com/progrium/macdriver/objc"
 )
 
@@ -30,6 +31,9 @@ func Crash() error {
 
 func main() {
 	runtime.LockOSThread()
+	cocoa.TerminateAfterWindowsClose = false
+
+	mode = PAUSE
 
 	app := cocoa.NSApp_WithDidLaunch(func(n objc.Object) {
 		// fontName := flag.String("font", "Helvetica", "font to use")
@@ -39,12 +43,31 @@ func main() {
 		obj.Retain()
 		obj.Button().SetTitle("▶️")
 
+		//nextClicked := make(chan bool)
+		//quit := make(chan bool)
+
 		itemTrackOrPause := cocoa.NSMenuItem_New()
-		itemTrackOrPause.SetTitle("Track")
-		itemTrackOrPause.SetAction(objc.Sel("track:"))
-		cocoa.DefaultDelegateClass.AddMethod("track:", func(_ objc.Object) {
-			mode = TRACK
-			fmt.Println("track!")
+		nextClicked := make(chan bool)
+		go func() {
+			for {
+				select {
+				case <-nextClicked:
+					if mode == TRACK {
+						core.Dispatch(func() { itemTrackOrPause.SetTitle("Pause") })
+						mode = PAUSE
+					} else {
+						core.Dispatch(func() { itemTrackOrPause.SetTitle("Track") })
+						mode = TRACK
+					}
+				}
+			}
+		}()
+
+		nextClicked <- true
+		itemTrackOrPause.SetAction(objc.Sel("nextClicked:"))
+		cocoa.DefaultDelegateClass.AddMethod("nextClicked:", func(_ objc.Object) {
+			nextClicked <- true
+			fmt.Println("track/pause!")
 		})
 
 		itemTrace := cocoa.NSMenuItem_New()
@@ -68,6 +91,7 @@ func main() {
 		menu.AddItem(itemQuit)
 		obj.SetMenu(menu)
 
+		//<-quit
 		/*
 			screen := cocoa.NSScreen_Main().Frame().Size
 			text := fmt.Sprintf(" %s ", strings.Join(flag.Args(), " "))
@@ -131,6 +155,7 @@ func main() {
 	})
 
 	app.ActivateIgnoringOtherApps(true)
+
 	app.Run()
 
 	cd_cmd := exec.Command("cd", "rewindMe")
