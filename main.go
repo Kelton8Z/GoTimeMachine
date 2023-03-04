@@ -1,7 +1,6 @@
 package main
 
 import (
-	"flag"
 	"fmt"
 	"os/exec"
 	"runtime"
@@ -35,9 +34,12 @@ func track() {
 func pause(capture_cmd chan exec.Cmd) {
 	cd_cmd := exec.Command("cd", "rewindMe")
 	add_cmd := exec.Command("git", "add", ".")
+	fmt.Println("Added")
 	msg := "msg"
 	commit_cmd := exec.Command("git", "commit", " -m", msg)
+	fmt.Println("committed")
 	push_cmd := exec.Command("git", "push")
+	fmt.Println("pushed")
 
 	cd_cmd.Run()
 	(<-capture_cmd).Process.Kill()
@@ -45,6 +47,7 @@ func pause(capture_cmd chan exec.Cmd) {
 	add_cmd.Run()
 	commit_cmd.Run()
 	push_cmd.Run()
+	fmt.Println("pause")
 }
 
 func main() {
@@ -54,15 +57,10 @@ func main() {
 	mode = PAUSE
 
 	app := cocoa.NSApp_WithDidLaunch(func(n objc.Object) {
-		// fontName := flag.String("font", "Helvetica", "font to use")
-		flag.Parse()
 
 		obj := cocoa.NSStatusBar_System().StatusItemWithLength(cocoa.NSVariableStatusItemLength)
 		obj.Retain()
 		obj.Button().SetTitle("▶️")
-
-		//nextClicked := make(chan bool)
-		//quit := make(chan bool)
 
 		itemTrackOrPause := cocoa.NSMenuItem_New()
 		nextClicked := make(chan bool)
@@ -71,14 +69,17 @@ func main() {
 			for {
 				select {
 				case <-nextClicked:
+					if mode == PAUSE {
+						mode = TRACK
+					} else {
+						mode = PAUSE
+					}
 					if mode == TRACK {
 						core.Dispatch(func() { itemTrackOrPause.SetTitle("Pause") })
-						mode = PAUSE
-						go pause(capture_cmd)
+						go track()
 					} else {
 						core.Dispatch(func() { itemTrackOrPause.SetTitle("Track") })
-						mode = TRACK
-						go track()
+						go pause(capture_cmd)
 					}
 				}
 			}
